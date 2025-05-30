@@ -26,6 +26,9 @@ if testType ~= 4
     legend("Arm 1", "Arm 2", "Arm 3", "Arm 4", "Location","best")
 end
 
+% RUN UNTIL HERE AND SELECT WINDOWS FOR AVERAGING
+
+% ENTER WINDOWS FOR AVERAGING BELOW:
 Dist_norm_low = [0.7, 0.9, 1.4, 2, 3, 4.25, 4.85, 6.05, 7.3, 10.1, 11.9]; % low x/R or z/R value for each averaging window
 Dist_norm_high = [0.85, 1.3, 1.65, 2.3, 3.15, 4.35, 4.95, 6.3, 7.5, 10.3, 12.1]; % high x/R or z/R value for each averaging window
 
@@ -99,11 +102,13 @@ for n = 1:length(HOBE_start)
     CT_HOBE(n,:) = mean(CT(HOBE_start(n):HOBE_end(n),:));
     Power_HOBE(n,:) = mean(Power(HOBE_start(n):HOBE_end(n),:));
     totPower_HOBE(n,1) = mean(totPower(HOBE_start(n):HOBE_end(n),:));
-    Pressure_HOBE(n,:) = mean(Pressure_align(HOBE_start(n):HOBE_end(n),:));
+    if qPressure == 1
+        Pressure_HOBE(n,:) = mean(Pressure_align(HOBE_start(n):HOBE_end(n),:));
+    end
 end
 
 %% Finding normalization point (farthest away from the boundary or hover out of ALL boundary effect - HOBE)
-norm_point = "far boundary"; % options: "far boundary" or "HOBE"
+norm_point = "HOBE"; % options: "far boundary" or "HOBE"
 
 if strcmp(norm_point, "far boundary") == 1 % normalizing by point farthest from boundary...
     Thrust_norm_pt = Thrust_mean(end,:);
@@ -333,64 +338,6 @@ for n = 1:n_probes % standard deviation (pressure fluctuations)
     grid on; grid minor;
     ax = gca; ax.FontSize = 14;
 end
-
-% %% Computing velocity from pressure
-% v_mean = sign(Pressure_mean_deg).*abs(sqrt((2*Pressure_mean_deg)/rho));
-% v_std = sqrt((2*Pressure_std_deg)/rho);
-% 
-% if strcmp(norm_point, "far boundary") == 1 % normalizing by point farthest from boundary...
-%     v_norm_pt = v_mean(end,:);
-% end
-% v_norm = v_mean./v_norm_pt;
-% 
-% %% 3D velocity plots
-% for n = 1:n_probes % mean velocity ratio
-%     figure
-%     set(gcf,"Color","white")
-%     plot3(xplot, probe_locs(1)*ones(1,length(xplot)), v_norm(:,(n-1)*8+1), "k", "Marker",...
-%         ".","MarkerSize",14,"LineWidth",1.5)
-%     hold on
-%     if testType == 1
-%         last_probe = 8;
-%         zlim([0 1.5])
-%     elseif testType == 3
-%         last_probe = 7;
-%         zlim([0.1 1.5])
-%     end
-%     for i = 2:last_probe
-%         plot3(xplot, probe_locs(i)*ones(1,length(xplot)), v_norm(:,(n-1)*8+i), "Marker",...
-%             ".","MarkerSize",14,"LineWidth",1.5)
-%     end
-%     ylabel("r/R","FontSize",14,"Interpreter","latex")
-%     xlabel(x_label,"FontSize",14,"Interpreter","latex")
-%     zlabel("$\frac{v_{IGE}}{v_{OGE}}$","FontSize",14,"Interpreter","latex",...
-%         "Rotation",0)
-%     title(strcat("Rotor velocity as a function of boundary distance (",...
-%             string(probe_angles(n))," deg)"))
-%     grid on; grid minor;
-%     ax = gca; ax.FontSize = 14;
-% end
-% 
-% for n = 1:n_probes % standard deviation (velocity fluctuations)
-%     figure
-%     set(gcf,"Color","white")
-%     plot3(xplot, probe_locs(1)*ones(1,length(xplot)), v_std(:,(n-1)*8+1), "k", "Marker",...
-%         ".","MarkerSize",14,"LineWidth",1.5)
-%     hold on
-%     for i = 2:7
-%         plot3(xplot, probe_locs(i)*ones(1,length(xplot)), v_std(:,(n-1)*8+i), "Marker",...
-%             ".","MarkerSize",14,"LineWidth",1.5)
-%     end
-%     ylabel("r/R","FontSize",14,"Interpreter","latex")
-%     xlabel(x_label,"FontSize",14,"Interpreter","latex")
-%     zlabel("$\sigma$ (m/s)","FontSize",14,"Interpreter","latex",...
-%         "Rotation",0)
-%     zlim([0 10])
-%     title(strcat("Rotor velocity fluctuations as a function of boundary distance (",...
-%             string(probe_angles(n))," deg)"))
-%     grid on; grid minor;
-%     ax = gca; ax.FontSize = 14;
-% end
 
 %% Converting ground distances to be wrt distance to rotor plane and normalizing (for partial boundary constant z/R test only)
 if testType == 4

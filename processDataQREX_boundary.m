@@ -11,7 +11,7 @@ testTypeList = {'Ground Effect (Hover)','Ground Effect (Forward Flight)',...
     'ListString',testTypeList);
 
 %% TURN ON/OFF FOR TEST W/ VS. W/O KIEL PRESSURE RAKE
-qPressure = 1;
+qPressure = 0; % ENTER WHETHER PRESSURE PROBES WERE USED IN TEST (0: no pressure probes, 1: pressure probes)
 if qPressure
     probe_angles = input("ENTER PROBE ANGLES (deg): ");
     probe_locs = round(([5, 6.95, 8.8, 10.6, 12.6, 14.4, 16.3, 18.3])./19.05,2);
@@ -90,7 +90,8 @@ for i = 1:length(tQrex)
     [~,corr_idx(i)] = min(abs(tESC-tQrex(i))); %#ok<*SAGROW>
 end
 RPM_align = RPM_filt(corr_idx,:); RPM_align(1,:) = []; % aligning RPM to thrust data
-RPM_scale = RPM_align; % scaling RPM data
+% RPM_scale = RPM_align; % scaling RPM data (CURRENT)
+RPM_scale = RPM_align/2; % scaling RPM data (OLD)
 
 %% Computing CT
 Omega = RPM_scale.*((2*pi)/60); % converting RPM to rad/s
@@ -149,7 +150,7 @@ title("Ground distance data from log")
 
 % RUN UNTIL HERE AND THEN SELECT ALIGNING POINTS FOR PI AND LOG DATA BELOW
 
-takeOffPt_pi = 419; takeOffPt_log = 735; % ENTER ALIGNING POINTS
+takeOffPt_pi = 696; takeOffPt_log = 738; % ENTER ALIGNING POINTS
 t_delta = tPi(takeOffPt_pi) - tLog(takeOffPt_log); % time offset between pi and pixhawk
 
 % sanity check plot
@@ -208,8 +209,9 @@ for i = 1:length(tQrex)
 end
 linVel_align = linVel(corr_idx,:);
 
-%% Aligning linear velocity data from ROS file to thrust data
-tIMU = rawData.times.tIMU;
+%% Aligning quaternion data from ROS file to thrust data
+% tIMU = rawData.times.tIMU; (CURRENT)
+tIMU = rawData.times.tPos; % (OLD)
 quat = rawData.data.quat;
 clear("corr_idx");
 for i = 1:length(tQrex)
@@ -222,7 +224,7 @@ yaw = rad2deg(yaw); pitch = rad2deg(pitch); roll = rad2deg(roll);
 
 %% Aligning, filtering, and de-biasing rotor pressure data from ROS file to thrust data
 % (ONLY FOR TESTS WITH ROTOR PRESSURE PROBE)
-if qPressure
+if qPressure == 1
     n_probes = 4; % ENTER NUMBER OF KIEL PROBES (1, 2, 3, or 4)
 
     Pressure = rawData.data.Pressure(:,1:n_probes*8);
@@ -250,7 +252,7 @@ if qPressure
     end
 end
 
-%% Saving data to main .mat file
+%% Saving data to main .mat file 
 save(fullfile(rospath, matname))
 
 %% Finding beginning and end of each test
@@ -278,7 +280,7 @@ end
 
 % RUN UNTIL HERE AND SELECT START AND END TEST POINTS (ENTER BELOW):
 
-start_test = 9378; end_test = 50936; % ENTER START AND END TEST POINTS BASED ON PLOTS
+start_test = 17034; end_test = 65342; % ENTER START AND END TEST POINTS BASED ON PLOTS
 
 %% Eliminating "dynamic" (or non-hover points) based on linear velocities
 hover_threshold = 0.15;
@@ -324,10 +326,11 @@ end
 
 %% Taking out points not at correct ground height (only applicable to wall effect and partial boundary constant z/R tests)
 if testType == 3 || testType == 4
-    zR_target = 6; % ENTER TARGET HEIGHT ABOVE GROUND BEFORE RUNNING SECTION (z/R)
+    zR_target = 1; % ENTER TARGET HEIGHT ABOVE GROUND BEFORE RUNNING SECTION (z/R)
     zR_target = zR_target*R - 0.095; % converting to be wrt ARK flow sensor
     zR_threshold = 0.1; % below/above limit of 20cm from target altitude
-    [idx_rm, ~] = find(groundDist_hover < zR_target - zR_threshold | groundDist_hover > zR_target + zR_threshold);
+    [idx_rm, ~] = find(groundDist_hover < zR_target - zR_threshold | ...
+        groundDist_hover > zR_target + zR_threshold);
 
     % eliminating points below GE limit:
     groundDist_hover(idx_rm) = [];
@@ -345,14 +348,16 @@ end
 
 %% Plotting Pressure in hover
 close all
-for n = 1:n_probes
-    figure(n)
-    plot(Pressure_hover(:,(n-1)*8+1), "k.")
-    hold on
-    plot(Pressure_hover(:,(n-1)*8+2:n*8),".")
-    title(strcat("Probes ", string((n-1)*8+1), "-", string(n*8)))
-    legend(string((n-1)*8+1:n*8),"Location","eastoutside")
-    ylim([-200 200])
+if qPressure == 1
+    for n = 1:n_probes
+        figure(n)
+        plot(Pressure_hover(:,(n-1)*8+1), "k.")
+        hold on
+        plot(Pressure_hover(:,(n-1)*8+2:n*8),".")
+        title(strcat("Probes ", string((n-1)*8+1), "-", string(n*8)))
+        legend(string((n-1)*8+1:n*8),"Location","eastoutside")
+        ylim([-200 200])
+    end
 end
 
 %% Selecting x/R windows (only applicable to partial boundary constant z/R tests)
@@ -402,11 +407,11 @@ if testType == 1 % for ground effect (hover) test...
 elseif testType == 3 || testType == 4 % for wall effect (hover) or for partial boundary (z/R constant) test...
     zR = (zR_target+0.095)/R;
     if testType == 4 % for partial boundary (z/R constant) test...
-        % xR = [6, 4, 3, 2, 1]; % ENTER x/R points (in order) for test
+        xR = [6, 4, 3, 2, 1]; % ENTER x/R points (in order) for test
     end
     savefilename = strcat(fullfile(rospath, matname),"_zR",string(zR));
 elseif testType == 5 % for partial boundary (x/R constant) test...
-    xR = -2; % ENTER x/R SETPOINT BEFORE RUNNING SECTION FOR testType = 5
+    xR = 4; % ENTER x/R SETPOINT BEFORE RUNNING SECTION FOR testType = 5
     if xR < -2
         groundDist_norm = groundDist_norm + 6;
     end
@@ -414,14 +419,24 @@ elseif testType == 5 % for partial boundary (x/R constant) test...
 end
 
 all_files = dir(rospath); 
-if testType ~= 1
+if testType ~= 1 || testType ~=  5
     if ~isfile(strcat(savefilename,".mat"))
         save(strcat(savefilename,".mat"))
     elseif ~isfile(strcat(savefilename,"_2.mat"))
-        savefilename = strcat(fullfile(rospath, matname),"_zR",string(zR),"_2.mat");
-        save(savefilename)
+        if testType ~= 5
+            savefilename = strcat(fullfile(rospath, matname),"_zR",string(zR),"_2.mat");
+            save(savefilename)
+        else
+            savefilename = strcat(fullfile(rospath, matname),"_xR",string(xR),"_2.mat");
+            save(savefilename)
+        end
     else
-        savefilename = strcat(fullfile(rospath, matname),"_zR",string(zR),"_3.mat");
-        save(savefilename)
+        if testType ~= 5
+            savefilename = strcat(fullfile(rospath, matname),"_zR",string(zR),"_3.mat");
+            save(savefilename)
+        else
+            savefilename = strcat(fullfile(rospath, matname),"_xR",string(xR),"_3.mat");
+            save(savefilename)
+        end
     end
 end
